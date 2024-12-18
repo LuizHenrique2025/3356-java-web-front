@@ -6,91 +6,88 @@ const listaTemporadas = document.getElementById('temporadas-select');
 const fichaSerie = document.getElementById('temporadas-episodios');
 const fichaDescricao = document.getElementById('ficha-descricao');
 
+// Função para criar um <option> e adicionar ao select
+function criarOption(value, text) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = text;
+    return option;
+}
+
 // Função para carregar temporadas
-function carregarTemporadas() {
-    getDados(`/series/${serieId}/temporadas/todas`)
-        .then(data => {
-            const temporadasUnicas = [...new Set(data.map(temporada => temporada.temporada))];
-            listaTemporadas.innerHTML = ''; // Limpa as opções existentes
+async function carregarTemporadas() {
+    try {
+        const data = await getDados(`/series/${serieId}/temporadas/todas`);
+        const temporadasUnicas = [...new Set(data.map(temporada => temporada.temporada))];
+        listaTemporadas.innerHTML = ''; 
 
-            const optionDefault = document.createElement('option');
-            optionDefault.value = '';
-            optionDefault.textContent = 'Selecione a temporada'
-            listaTemporadas.appendChild(optionDefault); 
-           
-            temporadasUnicas.forEach(temporada => {
-                const option = document.createElement('option');
-                option.value = temporada;
-                option.textContent = temporada;
-                listaTemporadas.appendChild(option);
-            });
-
-            const optionTodos = document.createElement('option');
-            optionTodos.value = 'todas';
-            optionTodos.textContent = 'Todas as temporadas'
-            listaTemporadas.appendChild(optionTodos); 
-        })
-        .catch(error => {
-            console.error('Erro ao obter temporadas:', error);
+        listaTemporadas.appendChild(criarOption('', 'Selecione a temporada'));
+        
+        temporadasUnicas.forEach(temporada => {
+            listaTemporadas.appendChild(criarOption(temporada, temporada));
         });
+
+        listaTemporadas.appendChild(criarOption('todas', 'Todas as temporadas'));
+    } catch (error) {
+        console.error('Erro ao obter temporadas:', error);
+        alert('Não foi possível carregar as temporadas no momento.');
+    }
 }
 
 // Função para carregar episódios de uma temporada
-function carregarEpisodios() {
-    getDados(`/series/${serieId}/temporadas/${listaTemporadas.value}`)
-        .then(data => {
-            const temporadasUnicas = [...new Set(data.map(temporada => temporada.temporada))];
-            fichaSerie.innerHTML = ''; 
-            temporadasUnicas.forEach(temporada => {
-                const ul = document.createElement('ul');
-                ul.className = 'episodios-lista';
+async function carregarEpisodios() {
+    if (!listaTemporadas.value) return;
 
-                const episodiosTemporadaAtual = data.filter(serie => serie.temporada === temporada);
+    try {
+        const data = await getDados(`/series/${serieId}/temporadas/${listaTemporadas.value}`);
+        const temporadasUnicas = [...new Set(data.map(temporada => temporada.temporada))];
+        fichaSerie.innerHTML = ''; 
 
-                const listaHTML = episodiosTemporadaAtual.map(serie => `
-                    <li>
-                        ${serie.numeroEpisodio} - ${serie.titulo}
-                    </li>
-                `).join('');
-                ul.innerHTML = listaHTML;
-                
-                const paragrafo = document.createElement('p');
-                const linha = document.createElement('br');
-                paragrafo.textContent = `Temporada ${temporada}`;
-                fichaSerie.appendChild(paragrafo);
-                fichaSerie.appendChild(linha);
-                fichaSerie.appendChild(ul);
+        temporadasUnicas.forEach(temporada => {
+            const ul = document.createElement('ul');
+            ul.className = 'episodios-lista';
+
+            const episodiosTemporadaAtual = data.filter(serie => serie.temporada === temporada);
+
+            episodiosTemporadaAtual.forEach(serie => {
+                const li = document.createElement('li');
+                li.textContent = `${serie.numeroEpisodio} - ${serie.titulo}`;
+                ul.appendChild(li);
             });
-        })
-        .catch(error => {
-            console.error('Erro ao obter episódios:', error);
+
+            const paragrafo = document.createElement('p');
+            paragrafo.textContent = `Temporada ${temporada}`;
+            fichaSerie.appendChild(paragrafo);
+            fichaSerie.appendChild(ul);
         });
+    } catch (error) {
+        console.error('Erro ao obter episódios:', error);
+        alert('Não foi possível carregar os episódios no momento.');
+    }
 }
 
-// Função para carregar informações da série
-function carregarInfoSerie() {
-    getDados(`/series/${serieId}`)
-        .then(data => {
-            fichaDescricao.innerHTML = `
-                <img src="${data.poster}" alt="${data.titulo}" />
-                <div>
-                    <h2>${data.titulo}</h2>
-                    <div class="descricao-texto">
-                        <p><b>Média de avaliações:</b> ${data.avaliacao}</p>
-                        <p>${data.sinopse}</p>
-                        <p><b>Estrelando:</b> ${data.atores}</p>
-                    </div>
+// Função para carregar informações gerais da série
+async function carregarInfoSerie() {
+    try {
+        const data = await getDados(`/series/${serieId}`);
+        fichaDescricao.innerHTML = `
+            <img src="${data.poster}" alt="${data.titulo}" />
+            <div>
+                <h2>${data.titulo}</h2>
+                <div class="descricao-texto">
+                    <p><b>Média de avaliações:</b> ${data.avaliacao}</p>
+                    <p>${data.sinopse}</p>
+                    <p><b>Estrelando:</b> ${data.atores}</p>
                 </div>
-            `;
-        })
-        .catch(error => {
-            console.error('Erro ao obter informações da série:', error);
-        });
+            </div>
+        `;
+    } catch (error) {
+        console.error('Erro ao obter informações da série:', error);
+        alert('Não foi possível carregar as informações da série.');
+    }
 }
 
-// Adiciona ouvinte de evento para o elemento select
+// Inicializar a página
 listaTemporadas.addEventListener('change', carregarEpisodios);
-
-// Carrega as informações da série e as temporadas quando a página carrega
 carregarInfoSerie();
 carregarTemporadas();
